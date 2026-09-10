@@ -1,0 +1,46 @@
+name: ContractGuard
+
+on:
+  pull_request:
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.json"
+      - "src/**"
+
+jobs:
+  contract-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed so we can diff against origin/main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Checkout base spec
+        run: git show origin/main:demo/openapi-old.yaml > /tmp/base-openapi.yaml
+
+      - name: Run contract diff
+        run: |
+          node bin/contractguard.js diff \
+            --base /tmp/base-openapi.yaml \
+            --current demo/openapi-new.yaml \
+            --format markdown \
+            --out contractguard-report.md \
+            --fail-on breaking
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractguard-report
+          path: contractguard-report.md

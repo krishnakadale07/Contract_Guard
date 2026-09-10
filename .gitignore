@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.log
+contractguard-report.*
+.env

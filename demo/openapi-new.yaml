@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: Demo Users API
+  version: "1.1.0"
+security:
+  - apiKey: []
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users (now paginated)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: include
+          in: query
+          required: true
+          example: "profile"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, email, role]
+                      properties:
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        name:
+                          type: string
+                        role:
+                          type: string
+        "400":
+          description: Invalid query parameters
+        "500":
+          description: Internal server error
+    post:
+      operationId: createUser
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        "201":
+          description: Created
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: Get a single user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          example: "usr_001"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A single user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, email]
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+        "404":
+          description: User not found

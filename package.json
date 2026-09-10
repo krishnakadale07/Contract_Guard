@@ -1,0 +1,30 @@
+{
+  "name": "contractguard",
+  "version": "0.1.0",
+  "description": "Detects breaking OpenAPI changes and validates specs — MVP: validate, diff, CLI report, GitHub Actions integration.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "contractguard": "./bin/contractguard.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
