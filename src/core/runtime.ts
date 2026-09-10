@@ -1,6 +1,7 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
 import type { OpenAPISpec, Operation, ParameterObject } from './types.js';
 import { validateAgainstSchema } from './schema-validate.js';
+import { redactText } from './redact.js';
 
 export type TestStatus = 'passed' | 'failed' | 'skipped';
 
@@ -24,6 +25,10 @@ export interface RuntimeTestOptions {
   baseUrl: string;
   timeoutMs?: number;
   concurrency?: number;
+  /** Request headers are accepted but never included in results or reports. */
+  headers?: Record<string, string>;
+  /** Known values that must be removed from unexpected network error messages. */
+  redactValues?: string[];
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -140,7 +145,9 @@ export function buildRequestUrl(
 async function runOne(
   flat: FlatGetOperation,
   baseUrl: string,
-  timeoutMs: number
+  timeoutMs: number,
+  headers: Record<string, string>,
+  redactValues: string[]
 ): Promise<RuntimeTestResult> {
   const started = Date.now();
   const built = buildRequestUrl(baseUrl, flat.path, flat.op);
@@ -173,7 +180,7 @@ async function runOne(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(url, { method: 'GET', signal: controller.signal });
+    const res = await fetch(url, { method: 'GET', headers, signal: controller.signal });
     const durationMs = Date.now() - started;
     const failures: string[] = [];
 
@@ -224,7 +231,7 @@ async function runOne(
     const message =
       (err as Error).name === 'AbortError'
         ? `request timed out after ${timeoutMs}ms`
-        : `request failed: ${(err as Error).message}`;
+        : `request failed: ${redactText((err as Error).message, redactValues)}`;
     return { operation: flat.key, url, status: 'failed', durationMs, failures: [message] };
   } finally {
     clearTimeout(timer);
@@ -258,9 +265,11 @@ export async function runRuntimeTests(
   const ops = flattenGetOperations(spec);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+  const headers = options.headers ?? {};
+  const redactValues = options.redactValues ?? Object.values(headers);
 
   const results = await runWithConcurrency(ops, concurrency, (op) =>
-    runOne(op, options.baseUrl, timeoutMs)
+    runOne(op, options.baseUrl, timeoutMs, headers, redactValues)
   );
 
   const summary = results.reduce(

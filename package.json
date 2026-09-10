@@ -1,8 +1,17 @@
 {
-  "name": "contractguard",
-  "version": "0.1.0",
-  "description": "Detects breaking OpenAPI changes and validates specs — MVP: validate, diff, CLI report, GitHub Actions integration.",
+  "name": "@krishnakadale07/contractguard",
+  "version": "0.2.0",
+  "description": "Detect breaking OpenAPI changes and validate live API contracts locally and in CI.",
   "license": "MIT",
+  "keywords": [
+    "openapi",
+    "api",
+    "contract-testing",
+    "api-testing",
+    "breaking-changes",
+    "cli",
+    "github-actions"
+  ],
   "type": "module",
   "bin": {
     "contractguard": "./bin/contractguard.js"
@@ -12,6 +21,23 @@
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krishnakadale07/ContractGaurd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/krishnakadale07/ContractGaurd/issues"
+  },
+  "homepage": "https://github.com/krishnakadale07/ContractGaurd#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "commander": "^12.1.0",

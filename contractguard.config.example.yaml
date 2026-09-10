@@ -1,0 +1,20 @@
+# Copy to contractguard.config.yaml and change the paths/URL for your API.
+# The CLI loads contractguard.config.yaml automatically from the current directory.
+
+diff:
+  base: ./openapi/previous.yaml
+  current: ./openapi/current.yaml
+  format: markdown
+  failOn: breaking
+  out: ./artifacts/contractguard-diff.md
+
+test:
+  spec: ./openapi/current.yaml
+  baseUrl: https://api.example.com
+  timeout: 5000
+  concurrency: 4
+  format: markdown
+  failOn: failed
+  report: ./artifacts/contractguard-runtime.md
+  headers:
+    Authorization: "Bearer ${CONTRACTGUARD_API_TOKEN}"

@@ -1,12 +1,12 @@
-# ContractGuard (MVP)
+# ContractGuard
 
 ContractGuard detects breaking OpenAPI changes — locally and in CI — so API
 changes stop silently breaking the clients that depend on them.
 
-This is the **MVP slice** of a larger plan: spec validation, breaking-change
-diffing, a CLI, and GitHub Actions integration. Deliberately **not** included
-yet: the dashboard, authentication/teams, live/runtime API testing, and the
-Redis job queue. Those are natural next phases once this core is solid.
+This is the **v0.2 CLI release**: a local-first tool for spec validation,
+breaking-change detection, safe runtime tests, configuration files, and CI.
+The hosted dashboard, teams, scheduled runs, and background workers remain
+future phases.
 
 ## What it does
 
@@ -20,6 +20,9 @@ Redis job queue. Those are natural next phases once this core is solid.
   posts/uploads
 - `--fail-on breaking` (diff, default) / `--fail-on failed` (test, default)
   make the process exit `1` so it can gate a pull request
+- A `contractguard.config.yaml` file for repeatable local and CI runs
+- Authenticated API testing through environment variables or explicit request
+  headers, without printing header values in reports
 
 ## Runtime contract testing (`test`)
 
@@ -60,7 +63,10 @@ for this MVP, not just unimplemented.
 ### Try it against the demo server
 
 ```bash
-node demo/server.mjs &          # starts a tiny demo API on :3000
+# In one terminal: starts a tiny demo API on :3000
+node demo/server.mjs
+
+# In another terminal:
 node bin/contractguard.js test --spec demo/openapi-new.yaml --base-url http://127.0.0.1:3000
 ```
 
@@ -93,10 +99,6 @@ npm run build      # compiles TypeScript to dist/
 npm test           # runs the vitest suite
 ```
 
-> This was scaffolded in a sandboxed environment without network access, so
-> `npm install` has not actually been run against these files yet — do that
-> first thing locally.
-
 ## Usage
 
 ```bash
@@ -117,6 +119,86 @@ node bin/contractguard.js diff \
   --out contractguard-report.md \
   --fail-on breaking
 ```
+
+## Configuration and authenticated APIs
+
+Copy `contractguard.config.example.yaml` to `contractguard.config.yaml` and
+replace the example paths and base URL. The CLI automatically loads that file
+from the current directory, or you can select one explicitly with `--config`.
+
+```yaml
+test:
+  spec: ./openapi/current.yaml
+  baseUrl: https://api.example.com
+  timeout: 5000
+  concurrency: 4
+  format: markdown
+  report: ./artifacts/contractguard-runtime.md
+  headers:
+    Authorization: "Bearer ${CONTRACTGUARD_API_TOKEN}"
+```
+
+Set the token outside the config file, then run the test. Do not commit a
+config file that contains a real token.
+
+A ready-to-run config is included for the demo specs:
+
+```bash
+node bin/contractguard.js diff --config demo/contractguard.config.yaml
+```
+
+```bash
+export CONTRACTGUARD_API_TOKEN="replace-with-your-token"
+node bin/contractguard.js test
+```
+
+On PowerShell:
+
+```powershell
+$env:CONTRACTGUARD_API_TOKEN = "replace-with-your-token"
+& "C:\Program Files\nodejs\node.exe" bin/contractguard.js test
+```
+
+You can also provide a header directly. Repeat `--header` for multiple
+headers.
+
+```bash
+node bin/contractguard.js test \
+  --spec openapi.yaml \
+  --base-url https://api.example.com \
+  --header "Authorization: Bearer $CONTRACTGUARD_API_TOKEN"
+```
+
+For repeatable automation, values use this precedence order:
+
+```text
+CLI flag > environment variable > config file > built-in default
+```
+
+Important environment variables:
+
+| Purpose | Variable |
+|---|---|
+| Config path | `CONTRACTGUARD_CONFIG` |
+| Diff base/current spec | `CONTRACTGUARD_DIFF_BASE`, `CONTRACTGUARD_DIFF_CURRENT` |
+| Runtime spec/base URL | `CONTRACTGUARD_TEST_SPEC`, `CONTRACTGUARD_TEST_BASE_URL` |
+| Runtime timeout/concurrency | `CONTRACTGUARD_TEST_TIMEOUT`, `CONTRACTGUARD_TEST_CONCURRENCY` |
+| Bearer token | `CONTRACTGUARD_API_TOKEN` |
+| Token scheme, such as `Basic` | `CONTRACTGUARD_AUTH_SCHEME` |
+| JSON headers object | `CONTRACTGUARD_HEADERS` |
+
+Header values are never added to ContractGuard reports. Token-like query
+parameters and URL credentials are redacted from runtime JSON and Markdown
+reports. Keep secrets in environment variables or your CI secret store—not in
+version-controlled YAML files.
+
+### Exit codes
+
+| Exit code | Meaning |
+|---|---|
+| `0` | No finding met the configured failure threshold |
+| `1` | A breaking diff finding or failed runtime test met the threshold |
+| `2` | Invalid CLI input, config, or OpenAPI file |
 
 While developing, you can skip the build step with:
 
@@ -139,6 +221,28 @@ that touches a spec file, using `demo/openapi-new.yaml` as a stand-in for
 your real spec — **update the `--base`/`--current` paths and the "Checkout
 base spec" step** to point at your actual OpenAPI file once you have one, and
 uploads a markdown report as a build artifact either way.
+
+For a project-specific workflow, place `contractguard.config.yaml` in the
+repository and set API tokens as GitHub Actions secrets. Never put a literal
+token into a workflow file.
+
+## Publish as an npm CLI
+
+The package is scoped as `@krishnakadale07/contractguard`, which avoids a
+collision with an existing unscoped package. Before publishing, build and
+inspect the package locally:
+
+```bash
+npm run build
+npm test
+npm pack --dry-run
+```
+
+When an npm account owns the `krishnakadale07` scope, publish the release with:
+
+```bash
+npm publish --access public
+```
 
 ## Project layout
 

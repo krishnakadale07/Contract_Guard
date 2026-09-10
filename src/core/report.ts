@@ -1,5 +1,6 @@
 import type { Finding, Severity } from './types.js';
 import type { RuntimeTestResult, RuntimeTestSummary } from './runtime.js';
+import { redactUrl } from './redact.js';
 
 export interface DiffReport {
   generatedAt: string;
@@ -108,7 +109,13 @@ export function buildTestReport(
   results: RuntimeTestResult[],
   summary: RuntimeTestSummary
 ): TestReport {
-  return { generatedAt: new Date().toISOString(), spec, baseUrl, summary, results };
+  return {
+    generatedAt: new Date().toISOString(),
+    spec,
+    baseUrl: redactUrl(baseUrl),
+    summary,
+    results: results.map((result) => ({ ...result, url: redactUrl(result.url) })),
+  };
 }
 
 const TEST_ICON: Record<RuntimeTestResult['status'], string> = {
@@ -119,7 +126,7 @@ const TEST_ICON: Record<RuntimeTestResult['status'], string> = {
 
 export function formatTestText(report: TestReport): string {
   const lines: string[] = [];
-  lines.push('ContractGuard v0.1 — runtime contract test', '');
+  lines.push('ContractGuard v0.2 — runtime contract test', '');
 
   for (const r of report.results) {
     const label = r.httpStatus ? `${r.operation} (${r.httpStatus})` : r.operation;

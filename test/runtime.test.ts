@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import { runRuntimeTests, buildRequestUrl } from '../src/core/runtime.js';
+import { buildTestReport } from '../src/core/report.js';
 import type { OpenAPISpec } from '../src/core/types.js';
 
 let server: Server;
@@ -25,6 +26,14 @@ beforeAll(async () => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ id: '1' }));
       }, 200);
+    } else if (req.url === '/secured') {
+      if (req.headers.authorization !== 'Bearer test-token') {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'missing authorization' }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: '1' }));
+      }
     } else {
       res.writeHead(404);
       res.end();
@@ -173,5 +182,29 @@ describe('runRuntimeTests', () => {
     const { results } = await runRuntimeTests(spec, { baseUrl });
     expect(results).toHaveLength(1);
     expect(results[0].operation).toBe('GET /ok');
+  });
+
+  it('sends configured headers without including them in test results', async () => {
+    const spec = specWith({
+      '/secured': { get: { responses: { '200': { content: {} } } } },
+    });
+    const { results, summary } = await runRuntimeTests(spec, {
+      baseUrl,
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    expect(summary.failed).toBe(0);
+    expect(results[0].status).toBe('passed');
+    expect(JSON.stringify(results)).not.toContain('test-token');
+  });
+
+  it('redacts token-like query values in reports', () => {
+    const report = buildTestReport(
+      'demo/openapi.yaml',
+      'https://example.test/?api_key=top-secret',
+      [{ operation: 'GET /users', url: 'https://example.test/users?access_token=top-secret', status: 'passed', durationMs: 1, failures: [] }],
+      { passed: 1, failed: 0, skipped: 0, total: 1 }
+    );
+    expect(JSON.stringify(report)).not.toContain('top-secret');
+    expect(report.baseUrl).toContain('REDACTED');
   });
 });

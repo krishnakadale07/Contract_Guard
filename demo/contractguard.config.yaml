@@ -1,0 +1,16 @@
+# A runnable configuration example. Invoke from the repository root:
+# node bin/contractguard.js diff --config demo/contractguard.config.yaml
+
+diff:
+  base: demo/openapi-old.yaml
+  current: demo/openapi-new.yaml
+  format: json
+  failOn: none
+
+test:
+  spec: demo/openapi-new.yaml
+  baseUrl: http://127.0.0.1:3000
+  timeout: 5000
+  concurrency: 2
+  format: text
+  failOn: none
